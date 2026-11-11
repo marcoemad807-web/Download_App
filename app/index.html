@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <base href="./">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="تطبيق شباب الأنبا صرابامون لكشف الغياب والأنشطة والخدمة">
+
+  <!-- Mobile Viewport for Perfect Full Screen & Responsiveness -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+
+  <!-- Web App & iOS PWA Full Screen Meta Tags -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="شباب صرابامون">
+  <meta name="theme-color" content="#881337">
+  <meta name="msapplication-navbutton-color" content="#881337">
+
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>شباب الأنبا صرابامون</title>
+  <link rel="manifest" href="manifest.json">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      position: fixed;
+      inset: 0;
+      background-color: #881337;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+      touch-action: manipulation;
+    }
+
+    /* Full screen container */
+    #flutter_container, flutter-view {
+      width: 100vw !important;
+      height: 100vh !important;
+      height: 100dvh !important; /* Dynamic Viewport Height for mobile */
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: block;
+      overflow: hidden;
+    }
+
+    /* Loading indicator before flutter boots */
+    .loading-splash {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #881337 0%, #4c0519 100%);
+      color: white;
+      z-index: 99999;
+      transition: opacity 0.4s ease;
+    }
+    .loading-logo {
+      font-size: 55px;
+      margin-bottom: 16px;
+      animation: pulse 1.6s infinite ease-in-out;
+    }
+    .loading-title {
+      font-size: 20px;
+      font-weight: bold;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+    .loading-sub {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.75);
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 0.9; }
+      50% { transform: scale(1.08); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div id="loading" class="loading-splash">
+    <div class="loading-logo">⛪</div>
+    <div class="loading-title">شباب الأنبا صرابامون</div>
+    <div class="loading-sub">جاري فتح التطبيق...</div>
+  </div>
+
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var loader = document.getElementById('loading');
+      if (loader) {
+        loader.style.opacity = '0';
+        setTimeout(function() {
+          if (loader.parentNode) loader.parentNode.removeChild(loader);
+        }, 400);
+      }
+    });
+  </script>
+
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
