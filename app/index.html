@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <base href="./">
@@ -15,7 +15,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <!-- default or black-translucent with linen background matches the app seamlessly -->
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="شباب صرابامون">
+  <meta name="apple-mobile-web-app-title" content="شباب الأنبا صرابامون">
   <meta name="theme-color" content="#FAF7F3">
   <meta name="msapplication-navbutton-color" content="#FAF7F3">
 
@@ -66,6 +66,14 @@
       display: block;
       overflow: hidden;
       background-color: #FAF7F3;
+    }
+
+    /* ملء الفيديو للشاشة بالكامل في PWA بالطول وبالعرض بدون حواف سوداء ومطابقة التطبيق 100% */
+    video, flt-platform-view video, flt-platform-view {
+      object-fit: fill !important;
+      width: 100% !important;
+      height: 100% !important;
+      display: block !important;
     }
 
     /* Loading indicator before flutter boots */
@@ -119,6 +127,21 @@
         }, 350);
       }
     });
+
+    // طلب إذن الإشعارات تلقائياً عند أول تفاعل لضمان وصول تنبيهات الخدمة في PWA
+    (function() {
+      if ('Notification' in window && Notification.permission === 'default') {
+        var askPerm = function() {
+          try {
+            Notification.requestPermission();
+          } catch(e) {}
+          window.removeEventListener('click', askPerm);
+          window.removeEventListener('touchstart', askPerm);
+        };
+        window.addEventListener('click', askPerm);
+        window.addEventListener('touchstart', askPerm);
+      }
+    })();
   </script>
 
   <script src="flutter_bootstrap.js" async></script>
