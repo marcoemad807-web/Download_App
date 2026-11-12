@@ -13,16 +13,22 @@
   <!-- Web App & iOS PWA Full Screen Meta Tags -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <!-- default or black-translucent with linen background matches the app seamlessly -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="شباب صرابامون">
-  <meta name="theme-color" content="#881337">
-  <meta name="msapplication-navbutton-color" content="#881337">
+  <meta name="theme-color" content="#FAF7F3">
+  <meta name="msapplication-navbutton-color" content="#FAF7F3">
 
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
   <link rel="icon" type="image/png" href="favicon.png"/>
 
   <title>شباب الأنبا صرابامون</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Preconnect and Load Arabic Cairo Font for instant native typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
   <style>
     * {
@@ -38,8 +44,9 @@
       overflow: hidden;
       position: fixed;
       inset: 0;
-      background-color: #881337;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      /* تم ضبط الخلفية لتطابق ثيم التطبيق تماماً لمنع ظهور أي حز لوني عند النوتش أو الشريط السفلي */
+      background-color: #FAF7F3;
+      font-family: 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
       -webkit-user-select: none;
       user-select: none;
       -webkit-touch-callout: none;
@@ -50,7 +57,7 @@
     #flutter_container, flutter-view {
       width: 100vw !important;
       height: 100vh !important;
-      height: 100dvh !important; /* Dynamic Viewport Height for mobile */
+      height: 100dvh !important;
       position: absolute;
       top: 0;
       left: 0;
@@ -58,6 +65,7 @@
       bottom: 0;
       display: block;
       overflow: hidden;
+      background-color: #FAF7F3;
     }
 
     /* Loading indicator before flutter boots */
@@ -68,28 +76,28 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      background: linear-gradient(135deg, #881337 0%, #4c0519 100%);
-      color: white;
+      background-color: #FAF7F3;
+      color: #8E1624;
       z-index: 99999;
-      transition: opacity 0.4s ease;
+      transition: opacity 0.35s ease;
     }
     .loading-logo {
-      font-size: 55px;
-      margin-bottom: 16px;
+      font-size: 56px;
+      margin-bottom: 14px;
       animation: pulse 1.6s infinite ease-in-out;
     }
     .loading-title {
-      font-size: 20px;
-      font-weight: bold;
-      color: #fff;
+      font-size: 22px;
+      font-weight: 800;
+      color: #8E1624;
       margin-bottom: 6px;
     }
     .loading-sub {
-      font-size: 13px;
-      color: rgba(255, 255, 255, 0.75);
+      font-size: 13.5px;
+      color: #64748B;
     }
     @keyframes pulse {
-      0%, 100% { transform: scale(1); opacity: 0.9; }
+      0%, 100% { transform: scale(1); opacity: 0.92; }
       50% { transform: scale(1.08); opacity: 1; }
     }
   </style>
@@ -108,7 +116,7 @@
         loader.style.opacity = '0';
         setTimeout(function() {
           if (loader.parentNode) loader.parentNode.removeChild(loader);
-        }, 400);
+        }, 350);
       }
     });
   </script>
