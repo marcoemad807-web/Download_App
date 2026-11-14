@@ -5,9 +5,10 @@
 // 2. الخلفية والموبايل مقفول أو التطبيق مصغر (Background & Standalone)
 // 3. عند إغلاق التطبيق تماماً (Push Events + Periodic Sync)
 // بتطابق شكلي وتصميمي 100% مع تطبيق الأندرويد الأصلي
+// ومخصص حصرياً لحسابات المخدومين (الشباب) فقط
 // ======================================================================
 
-const CACHE_NAME = 'church-pwa-v2';
+const CACHE_NAME = 'church-pwa-v3';
 const SYNC_CACHE_NAME = 'church-sync-store-v1';
 const SYNC_KEY = '/church_user_sync_state.json';
 
@@ -21,34 +22,49 @@ self.addEventListener('activate', (event) => {
 
 // ======================================================================
 // دالة تنسيق الإشعار ليكون مطابقاً 100% لشكل ومحتوى إشعار تطبيق الأندرويد
+// واستخدام المسارات المطلقة للأيقونة لمنع ظهور أيقونة المتصفح الافتراضية
 // ======================================================================
 function formatChurchNotification(rawTitle, rawBody, senderRole, senderServantName, announcementId) {
   let cleanTitle = (rawTitle || 'تنبيه جديد من الخدمة').trim();
   let role = (senderRole || '').trim();
+  let servantName = (senderServantName || '').trim();
 
-  // نفس منطق الأندرويد: لو فيه دور للمرسل يظهر [الدور • العنوان] وإلا [⛪ العنوان]
+  // نفس منطق وأسلوب إشعار الأندرويد:
+  // العنوان: شباب الأنبا صرابامون • [الدور]
   let displayTitle = '';
   if (role.length > 0) {
-    displayTitle = role + ' • ' + cleanTitle;
+    displayTitle = 'شباب الأنبا صرابامون • ' + role;
   } else {
-    displayTitle = '⛪ ' + cleanTitle;
+    displayTitle = 'شباب الأنبا صرابامون • ⛪ إعلان جديد';
   }
 
-  // تنظيف نص الإعلان
+  // تنظيف وتنسيق نص الإعلان مع إضافة رأس العنوان واسم المرسل
   let cleanBody = (rawBody || '').replace(/\r?\n/g, ' ').trim();
-  let servantName = (senderServantName || '').trim();
-  if (servantName.length > 0 && !cleanBody.includes(servantName)) {
-    cleanBody = cleanBody + (cleanBody.length > 0 ? '\n' : '') + 'من: ' + servantName;
+  let bodyParts = [];
+  if (cleanTitle && !cleanTitle.includes('تنبيه جديد') && !cleanTitle.includes('إعلان جديد')) {
+    bodyParts.push('📌 ' + cleanTitle);
   }
+  if (cleanBody) {
+    bodyParts.push(cleanBody);
+  }
+  if (servantName && !cleanBody.includes(servantName)) {
+    bodyParts.push('👤 من: ' + servantName);
+  }
+  let finalBody = bodyParts.join('\n') || cleanTitle || 'تنبيه جديد من كنيسة الأنبا صرابامون';
+
+  // استخراج المسار المطلق للأيقونة لضمان ظهور أيقونة الكنيسة بدلاً من أيقونة كروم
+  const baseUrl = (self.registration && self.registration.scope) ? self.registration.scope : self.location.origin;
+  const iconUrl = new URL('icons/Icon-192.png', baseUrl).href;
+  const badgeUrl = new URL('icons/Icon-192.png', baseUrl).href;
 
   const id = announcementId || Date.now();
 
   return {
     title: displayTitle,
     options: {
-      body: cleanBody,
-      icon: './icons/Icon-192.png',
-      badge: './icons/Icon-192.png',
+      body: finalBody,
+      icon: iconUrl,
+      badge: badgeUrl,
       dir: 'rtl',
       lang: 'ar',
       tag: 'church-announcement-' + id,
@@ -56,6 +72,7 @@ function formatChurchNotification(rawTitle, rawBody, senderRole, senderServantNa
       requireInteraction: true,
       // نفس نمط اهتزاز أندرويد المعرف في التطبيق: [0, 300, 200, 300]
       vibrate: [0, 300, 200, 300],
+      silent: false,
       actions: [
         { action: 'open', title: 'عرض التفاصيل ⛪' },
         { action: 'dismiss', title: 'إغلاق' }
@@ -89,14 +106,28 @@ async function setStoredSyncState(state) {
   } catch(e) {}
 }
 
+async function clearStoredSyncState() {
+  try {
+    const cache = await caches.open(SYNC_CACHE_NAME);
+    await cache.delete(SYNC_KEY);
+    // حفظ حالة تفيد بأن الحساب الحالي ليس مخدوماً (خادم أو أمين خدمة أو كاهن)
+    await cache.put(SYNC_KEY, new Response(JSON.stringify({ userType: 'servant' }), {
+      headers: { 'Content-Type': 'application/json' }
+    }));
+  } catch(e) {}
+}
+
 // ======================================================================
 // دالة فحص الإعلانات السحابية من داخل Service Worker في الخلفية
-// تعمل حتى لو التطبيق مصغر أو مقفول بالكامل
+// مخصصة حصرياً لحسابات المخدومين (الشباب) فقط
 // ======================================================================
 async function checkAnnouncementsFromSW() {
   try {
     const state = await getStoredSyncState();
-    if (!state || !state.academicYear) return;
+    // إعلانات الخدمة تظهر حصرياً لحسابات المخدومين فقط لا غير
+    if (!state || state.userType !== 'student' || !state.academicYear) {
+      return;
+    }
 
     const academicYear = state.academicYear;
     const lastSeenId = state.lastSeenId || 0;
@@ -145,33 +176,38 @@ setInterval(checkAnnouncementsFromSW, 25000);
 // ======================================================================
 // 1. استقبال Push Notification من السيرفر (Web Push / FCM Web)
 // يعمل عندما يكون التطبيق مقفولاً تماماً والمتصفح مغلق
+// مقتصر فقط على حسابات المخدومين
 // ======================================================================
 self.addEventListener('push', (event) => {
-  let title = 'إعلان جديد من الخدمة ⛪';
-  let body = '';
-  let senderRole = '';
-  let senderServantName = '';
-  let announcementId = Date.now();
-
-  if (event.data) {
-    try {
-      const data = event.data.json();
-      // استخراج البيانات القادمة من FCM أو السيرفر
-      title = data.title || data.notification?.title || data.data?.title || title;
-      body = data.body || data.notification?.body || data.data?.body || '';
-      senderRole = data.senderRole || data.data?.senderRole || '';
-      senderServantName = data.senderServantName || data.data?.senderServantName || '';
-      announcementId = parseInt(data.announcementId || data.data?.announcementId || '') || announcementId;
-    } catch(e) {
-      body = event.data.text() || body;
+  event.waitUntil((async () => {
+    // التحقق من أن الحساب الحالي مخدوم
+    const state = await getStoredSyncState();
+    if (state && state.userType && state.userType !== 'student') {
+      return; // خادم أو كاهن - لا تظهر أي إشعارات
     }
-  }
 
-  const n = formatChurchNotification(title, body, senderRole, senderServantName, announcementId);
+    let title = 'إعلان جديد من الخدمة ⛪';
+    let body = '';
+    let senderRole = '';
+    let senderServantName = '';
+    let announcementId = Date.now();
 
-  event.waitUntil(
-    self.registration.showNotification(n.title, n.options)
-  );
+    if (event.data) {
+      try {
+        const data = event.data.json();
+        title = data.title || data.notification?.title || data.data?.title || title;
+        body = data.body || data.notification?.body || data.data?.body || '';
+        senderRole = data.senderRole || data.data?.senderRole || '';
+        senderServantName = data.senderServantName || data.data?.senderServantName || '';
+        announcementId = parseInt(data.announcementId || data.data?.announcementId || '') || announcementId;
+      } catch(e) {
+        body = event.data.text() || body;
+      }
+    }
+
+    const n = formatChurchNotification(title, body, senderRole, senderServantName, announcementId);
+    await self.registration.showNotification(n.title, n.options);
+  })());
 });
 
 // ======================================================================
@@ -224,11 +260,22 @@ self.addEventListener('notificationclick', (event) => {
 self.addEventListener('message', (event) => {
   if (!event.data) return;
 
-  // أ) مزامنة بيانات المستخدم والدفعة لبدء المراقبة في الخلفية
+  // أ) مسح مزامنة المستخدم تماماً (عند تسجيل خروج المخدوم أو تسجيل دخول خادم)
+  if (event.data.type === 'CLEAR_USER_SYNC') {
+    clearStoredSyncState();
+    return;
+  }
+
+  // ب) مزامنة بيانات المخدوم والدفعة لبدء المراقبة في الخلفية
   if (event.data.type === 'SET_USER_SYNC') {
-    const { academicYear, studentId, lastSeenId } = event.data;
+    const { academicYear, studentId, lastSeenId, userType } = event.data;
+    if (userType && userType !== 'student') {
+      clearStoredSyncState();
+      return;
+    }
     getStoredSyncState().then((existing) => {
       const state = existing || {};
+      state.userType = 'student';
       state.academicYear = academicYear || state.academicYear || 1;
       state.studentId = studentId || state.studentId;
       if (lastSeenId && lastSeenId > 0) {
@@ -236,24 +283,30 @@ self.addEventListener('message', (event) => {
       }
       setStoredSyncState(state);
     });
+    return;
   }
 
-  // ب) تحديث آخر معرف تمت قراءته
+  // جـ) تحديث آخر معرف تمت قراءته
   if (event.data.type === 'UPDATE_LAST_SEEN') {
     const { lastSeenId } = event.data;
     if (lastSeenId && lastSeenId > 0) {
       getStoredSyncState().then((existing) => {
         const state = existing || {};
-        state.lastSeenId = Math.max(state.lastSeenId || 0, lastSeenId);
-        setStoredSyncState(state);
+        if (state.userType === 'student') {
+          state.lastSeenId = Math.max(state.lastSeenId || 0, lastSeenId);
+          setStoredSyncState(state);
+        }
       });
     }
+    return;
   }
 
-  // جـ) إظهار إشعار فوري من Flutter بالبيانات الكاملة وشكل مطابق للتطبيق
+  // د) إظهار إشعار فوري من Flutter بالبيانات الكاملة وشكل مطابق للتطبيق (للمخدومين فقط)
   if (event.data.type === 'SHOW_CHURCH_ANNOUNCEMENT') {
-    const { title, body, senderRole, senderServantName, id } = event.data;
+    const { title, body, senderRole, senderServantName, id, userType } = event.data;
+    if (userType && userType !== 'student') return;
     const n = formatChurchNotification(title, body, senderRole, senderServantName, id);
     self.registration.showNotification(n.title, n.options);
+    return;
   }
 });

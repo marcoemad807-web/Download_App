@@ -1,4 +1,3 @@
-﻿importScripts('push_sw.js');
 'use strict';
 const MANIFEST = 'flutter-app-manifest';
 const TEMP = 'flutter-temp-cache';
@@ -33,16 +32,16 @@ const RESOURCES = {"assets/AssetManifest.bin": "3ee193ad2ae69ae44d11c3b10a41341a
 "favicon.png": "aa292e445565c033a4424cbb252f348e",
 "firebase-messaging-sw.js": "13bc0a98eb7fa39699337a90996e78a1",
 "flutter.js": "24bc71911b75b5f8135c949e27a2984e",
-"flutter_bootstrap.js": "dbde9128daadad13975787c81eb7502f",
+"flutter_bootstrap.js": "1391f51aa057916ee7459aa172a47271",
 "icons/Icon-192.png": "0ee3d9ccdee53de1481e19d5deaae839",
 "icons/Icon-512.png": "f3ccea5307dd98b06b4747d247d86636",
 "icons/Icon-maskable-192.png": "0ee3d9ccdee53de1481e19d5deaae839",
 "icons/Icon-maskable-512.png": "f3ccea5307dd98b06b4747d247d86636",
-"index.html": "303591b34979ab9cebf4695597bb1521",
-"/": "303591b34979ab9cebf4695597bb1521",
-"main.dart.js": "fb72daec877fb3b0a765c4ca5d1f45d5",
+"index.html": "2c339a2262e713cff5b54c75e8798174",
+"/": "2c339a2262e713cff5b54c75e8798174",
+"main.dart.js": "fb8a27d687e300de506cff824884141a",
 "manifest.json": "3f36542984d6de9d7bb308923701d302",
-"push_sw.js": "c5dd13bc2eb32d8359356ab4b34bb0f8",
+"push_sw.js": "36cf6b8ae8de1dfc2d2eba96d8bdc6f8",
 "version.json": "372b32499df972a4c0bf9c31ffabab90"};
 // The application shell files that are downloaded before a service worker can
 // start.
