@@ -141,6 +141,19 @@
         window.addEventListener('click', askPerm);
         window.addEventListener('touchstart', askPerm);
       }
+
+      // تسجيل الـ Service Worker مبكراً لدعم استقبال الإشعارات في الخلفية
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('./push_sw.js').then(function(reg) {
+            if ('periodicSync' in reg) {
+              reg.periodicSync.register('church-announcements-sync', {
+                minInterval: 60 * 1000
+              }).catch(function() {});
+            }
+          }).catch(function() {});
+        });
+      }
     })();
   </script>
 
