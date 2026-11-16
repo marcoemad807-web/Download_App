@@ -8,7 +8,7 @@
 // ومخصص حصرياً لحسابات المخدومين (الشباب) فقط
 // ======================================================================
 
-const CACHE_NAME = 'church-pwa-v3';
+const CACHE_NAME = 'church-pwa-v4';
 const SYNC_CACHE_NAME = 'church-sync-store-v1';
 const SYNC_KEY = '/church_user_sync_state.json';
 
@@ -21,65 +21,160 @@ self.addEventListener('activate', (event) => {
 });
 
 // ======================================================================
-// دالة تنسيق الإشعار ليكون مطابقاً 100% لشكل ومحتوى إشعار تطبيق الأندرويد
-// واستخدام المسارات المطلقة للأيقونة لمنع ظهور أيقونة المتصفح الافتراضية
+// دالة استخراج وتنسيق بيانات الإشعار باحترافية وتطابق تام 100% مع الأندرويد:
+// 1. اسم التطبيق (شباب الأنبا صرابامون) يظهر في رأس الإشعار بفونت رمادي صغير
+// 2. العنوان الرئيسي العريض: اسم الخادم أو أمين الخدمة أو الأب الكاهن
+// 3. المحتوى: نص الإعلان نظيف تماماً بدون أي وسوم برمجة (مثل ROLE) مع عنوان التنبيه
+// ======================================================================
+function parseChurchNotificationData(rawTitle, rawBody, rawSenderRole, rawSenderServantName, announcementId) {
+  let title = (rawTitle || '').trim();
+  let body = (rawBody || '').trim();
+  let role = (rawSenderRole || '').trim();
+  let senderName = (rawSenderServantName || '').trim();
+
+  // 1. استخراج الدور من وسوم النص إذا لم يكن ممرراً
+  const roleMatch = body.match(/<!--ROLE:(.*?)-->/);
+  if (roleMatch && roleMatch[1]) {
+    const extracted = roleMatch[1].trim();
+    if (!role && extracted) {
+      role = extracted;
+    }
+  }
+
+  // 2. تنظيف نص الرسالة تماماً من جميع الوسوم والعلامات التقنية حتى لا تظهر للمستخدم
+  let cleanBody = body
+    .replace(/<!--ROLE:.*?-->/gs, '')
+    .replace(/<!--ATTACHMENTS:.*?-->/gs, '')
+    .replace(/<!--LEADER-->/gs, '')
+    .replace(/\[LEADER_ANNOUNCEMENT\]/gs, '')
+    .replace(/\[أمين الخدمة\]/gs, '')
+    .replace(/\u200B\u200C\u200B/g, '')
+    .replace(/\u200B/g, '')
+    .replace(/<!--.*?-->/gs, '')
+    .trim();
+
+  // 3. فحص العنوان واستخراج اسم المرسل أو الدور إذا كان مدمجاً في العنوان (مثل: ⛪ ماريو بشرى (أمين الخدمة) • behdje)
+  let cleanTitle = title;
+  if (cleanTitle.startsWith('شباب الأنبا صرابامون •')) {
+    cleanTitle = cleanTitle.replace(/^شباب الأنبا صرابامون •\s*/, '').trim();
+  }
+
+  if (cleanTitle.includes('•')) {
+    const parts = cleanTitle.split('•').map(p => p.trim());
+    const firstPart = parts[0].replace(/^[⛪📌\s]+/, '').trim();
+    if (firstPart.includes('أمين الخدمة') ||
+        firstPart.includes('امين الخدمة') ||
+        firstPart.includes('أبونا') ||
+        firstPart.includes('ابونا') ||
+        firstPart.includes('خادم') ||
+        !senderName) {
+      if (!senderName &&
+          !firstPart.includes('إعلان جديد') &&
+          !firstPart.includes('تنبيه جديد')) {
+        senderName = firstPart;
+      }
+      cleanTitle = parts.slice(1).join(' • ').trim();
+    }
+  }
+
+  // إزالة أي أيقونات كنسية مسبقة من بداية العنوان
+  cleanTitle = cleanTitle.replace(/^[⛪📌\s]+/, '').trim();
+
+  // 4. استخراج الاسم والدور وتنسيقهما ليظهرا كعنوان رئيسي عريض
+  // "وتحته اسم الخادم او امين الخدمه او الاب الكاهن الي باعت الرساله"
+  let mainTitle = '';
+
+  const isPriest = role.includes('أبونا') ||
+      role.includes('ابونا') ||
+      senderName.includes('أبونا') ||
+      senderName.includes('ابونا') ||
+      senderName.includes('القمص') ||
+      senderName.includes('القس');
+
+  const isLeader = role.includes('أمين الخدمة') ||
+      role.includes('امين الخدمة') ||
+      role.includes('أمين عام') ||
+      senderName.includes('أمين الخدمة') ||
+      senderName.includes('امين الخدمة');
+
+  if (isPriest) {
+    let priestName = senderName.replace(/^(قدس\s+)?(أبونا|ابونا)\s*/, '').trim();
+    mainTitle = priestName.length > 0 ? ('قدس أبونا ' + priestName) : 'قدس أبونا راعي الاجتماع';
+  } else if (isLeader) {
+    let leaderName = senderName.replace(/\(أمين الخدمة\)|\(امين الخدمة\)|أمين الخدمة|امين الخدمة/g, '').trim();
+    mainTitle = leaderName.length > 0 ? (leaderName + ' (أمين الخدمة)') : 'أمين الخدمة';
+  } else if (senderName.length > 0) {
+    if (role.length > 0 && !role.includes('خادم بالخدمة') && !senderName.includes(role)) {
+      mainTitle = senderName + ' (' + role + ')';
+    } else {
+      mainTitle = senderName + (role.includes('خادم') ? ' (' + role + ')' : '');
+    }
+  } else if (role.length > 0) {
+    mainTitle = role;
+  } else {
+    mainTitle = 'خادم بالخدمة';
+  }
+
+  // إزالة أي أقواس فارغة
+  mainTitle = mainTitle.replace(/\(\s*\)/g, '').trim();
+
+  // 5. تنسيق محتوى الرسالة تحت العنوان
+  let bodyLines = [];
+  if (cleanTitle.length > 0 &&
+      cleanTitle !== 'إعلان جديد' &&
+      cleanTitle !== 'تنبيه جديد' &&
+      cleanTitle !== 'إعلان جديد من الخدمة' &&
+      cleanTitle !== 'تنبيه جديد من الخدمة' &&
+      !mainTitle.includes(cleanTitle)) {
+    bodyLines.push('📌 ' + cleanTitle);
+  }
+
+  if (cleanBody.length > 0) {
+    bodyLines.push(cleanBody);
+  }
+
+  let finalBody = bodyLines.join('\n') || cleanBody || cleanTitle || 'تنبيه جديد من كنيسة الأنبا صرابامون';
+
+  return {
+    mainTitle: mainTitle,
+    finalBody: finalBody,
+    id: announcementId || Date.now()
+  };
+}
+
+// ======================================================================
+// دالة إنشاء كائن الإشعار لـ Web Notification API
 // ======================================================================
 function formatChurchNotification(rawTitle, rawBody, senderRole, senderServantName, announcementId) {
-  let cleanTitle = (rawTitle || 'تنبيه جديد من الخدمة').trim();
-  let role = (senderRole || '').trim();
-  let servantName = (senderServantName || '').trim();
+  const parsed = parseChurchNotificationData(rawTitle, rawBody, senderRole, senderServantName, announcementId);
 
-  // نفس منطق وأسلوب إشعار الأندرويد:
-  // العنوان: شباب الأنبا صرابامون • [الدور]
-  let displayTitle = '';
-  if (role.length > 0) {
-    displayTitle = 'شباب الأنبا صرابامون • ' + role;
-  } else {
-    displayTitle = 'شباب الأنبا صرابامون • ⛪ إعلان جديد';
-  }
-
-  // تنظيف وتنسيق نص الإعلان مع إضافة رأس العنوان واسم المرسل
-  let cleanBody = (rawBody || '').replace(/\r?\n/g, ' ').trim();
-  let bodyParts = [];
-  if (cleanTitle && !cleanTitle.includes('تنبيه جديد') && !cleanTitle.includes('إعلان جديد')) {
-    bodyParts.push('📌 ' + cleanTitle);
-  }
-  if (cleanBody) {
-    bodyParts.push(cleanBody);
-  }
-  if (servantName && !cleanBody.includes(servantName)) {
-    bodyParts.push('👤 من: ' + servantName);
-  }
-  let finalBody = bodyParts.join('\n') || cleanTitle || 'تنبيه جديد من كنيسة الأنبا صرابامون';
-
-  // استخراج المسار المطلق للأيقونة لضمان ظهور أيقونة الكنيسة بدلاً من أيقونة كروم
+  // استخراج المسار المطلق لأيقونة الكنيسة الرسمية
   const baseUrl = (self.registration && self.registration.scope) ? self.registration.scope : self.location.origin;
   const iconUrl = new URL('icons/Icon-192.png', baseUrl).href;
   const badgeUrl = new URL('icons/Icon-192.png', baseUrl).href;
 
-  const id = announcementId || Date.now();
-
   return {
-    title: displayTitle,
+    title: parsed.mainTitle,
     options: {
-      body: finalBody,
+      body: parsed.finalBody,
       icon: iconUrl,
       badge: badgeUrl,
       dir: 'rtl',
       lang: 'ar',
-      tag: 'church-announcement-' + id,
+      tag: 'church-announcement-' + parsed.id,
       renotify: true,
       requireInteraction: true,
-      // نفس نمط اهتزاز أندرويد المعرف في التطبيق: [0, 300, 200, 300]
-      vibrate: [0, 300, 200, 300],
+      // نمط اهتزاز منبثق مميز لأقصى لفت انتباه
+      vibrate: [0, 400, 200, 400],
       silent: false,
+      timestamp: Date.now(),
       actions: [
         { action: 'open', title: 'عرض التفاصيل ⛪' },
         { action: 'dismiss', title: 'إغلاق' }
       ],
       data: {
         url: './',
-        announcementId: id
+        announcementId: parsed.id
       }
     }
   };
